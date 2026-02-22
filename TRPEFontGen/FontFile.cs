@@ -52,8 +52,6 @@ public class FontFile(int charCount, string name, int lineSpacing, float spacing
 
     public void SaveTextures(string path)
     {
-        if (Directory.Exists(path)) Directory.Delete(path, true);
-
         Directory.CreateDirectory(path);
 
         for (var i = 0; i < Textures.Count; i++)

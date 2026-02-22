@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Diagnostics;
+using System.Text;
 using SixLabors.Fonts;
 using TRPEFontGen;
 
@@ -8,7 +9,14 @@ internal static class Program
 {
     public static void Main()
     {
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
+        
         GenFont();
+        
+        stopwatch.Stop();
+        Console.WriteLine($"Generate font took {stopwatch.Elapsed.TotalSeconds:F3}s");
+        
     }
     
     private static void GenFont()
