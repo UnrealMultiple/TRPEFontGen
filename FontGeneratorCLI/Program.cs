@@ -18,6 +18,7 @@ internal static class Program
             AnsiConsole.MarkupLine("[red]程序运行过程中发生致命错误:[ /]");
             AnsiConsole.WriteException(ex);
         }
+        Console.ReadLine();
     }
 
     private static void Run()
