@@ -1,93 +1,98 @@
-using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
-using System.Drawing.Drawing2D;
+using SixLabors.ImageSharp;
 using Microsoft.Xna.Framework;
+using SixLabors.Fonts;
+using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+using Color = SixLabors.ImageSharp.Color;
+using PointF = SixLabors.ImageSharp.PointF;
 using Rectangle = Microsoft.Xna.Framework.Rectangle;
 
 namespace TRPEFontGen;
 
-[SuppressMessage("Interoperability", "CA1416:验证平台兼容性")]
 public static class Generator
 {
-    public static FontFile Generate(Font font, char[] chars, int minusKerning = 5,
+    public static FontFile Generate(Font font, char[] chars, string name, int minusKerning = 5,
         int compressSize = 2, int lineSpacing = 24, float spacing = 0, char defaultChar = '*')
     {
         const int size = 1024;
-        var fontFile = new FontFile(chars.Length)
+        const int atlasPadding = 2;
+
+        var textOption = new TextOptions(font)
         {
-            LineSpacing = lineSpacing,
-            Spacing = spacing,
-            HasDefaultChar = true,
-            DefaultChar = defaultChar
+            KerningMode = KerningMode.None,
+            HintingMode = HintingMode.None
         };
 
-        var png = new Bitmap(size, size);
-        var g = CreateGraphics(png);
+        var fontFile = new FontFile(chars.Length, name, lineSpacing, spacing, true, defaultChar);
+
+        var fontImage = new Image<Rgba32>(size, size);
 
         float xNow = 1;
         float yNow = 1;
         float yMax = 0;
         byte pages = 0;
 
+
         foreach (var c in chars)
         {
-            var charSize = g.MeasureString(c.ToString(), font);
-            var drawWidth = charSize.Width - compressSize;
-            var drawHeight = charSize.Height - compressSize;
+            var charSize = TextMeasurer.MeasureSize(c.ToString(), textOption);
 
-            if (xNow + drawWidth + 10 > size)
+            var actualWidth = (float)Math.Ceiling(charSize.Width);
+            var actualHeight = (float)Math.Ceiling(charSize.Height);
+
+            var drawWidth = actualWidth - compressSize;
+            var drawHeight = actualHeight - compressSize;
+
+            if (xNow + actualWidth + atlasPadding > size)
             {
-                yNow += yMax;
+                yNow += yMax + atlasPadding;
                 xNow = 1;
                 yMax = 0;
             }
 
-            if (yNow + drawHeight > size)
+            if (yNow + actualHeight + atlasPadding > size)
             {
-                fontFile.Textures.Add(png);
+                fontFile.Textures.Add(fontImage);
 
-                g.Dispose();
-                png = new Bitmap(size, size);
-                g = CreateGraphics(png);
-
+                fontImage = new Image<Rgba32>(size, size);
                 xNow = 1;
                 yNow = 1;
                 yMax = 0;
                 pages++;
             }
 
-            if (drawHeight > yMax)
-                yMax = drawHeight;
+            if (actualHeight > yMax)
+                yMax = actualHeight;
 
-            g.DrawString(c.ToString(), font, Brushes.White,
-                new RectangleF(xNow, yNow, drawWidth, drawHeight));
+            var textOptions = new RichTextOptions(font)
+            {
+                Origin = new PointF(xNow, yNow),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top
+            };
+
+            fontImage.Mutate(ctx => ctx.DrawText(
+                textOptions,
+                c.ToString(),
+                Color.White
+            ));
 
             var fontChar = new FontChar
-            {
-                Char = c,
-                Cropping = new Rectangle(0, 0, (int)drawWidth, (int)drawHeight + 2),
-                Glyph = new Rectangle((int)xNow, (int)yNow, (int)drawWidth, (int)drawHeight),
-                Kerning = new Vector3(0, drawWidth - minusKerning, 0),
-                Page = pages
-            };
+            (
+                c,
+                new Rectangle(0, 0, (int)drawWidth, (int)drawHeight + 2),
+                new Rectangle((int)xNow, (int)yNow, (int)drawWidth, (int)drawHeight),
+                new Vector3(0, drawWidth - minusKerning, 0),
+                pages
+            );
             fontFile.Chars.Add(fontChar);
-            xNow += drawWidth;
+            xNow += actualWidth + atlasPadding;
         }
 
-        g.Dispose();
-        fontFile.Textures.Add(png);
-        fontFile.TotalPages = (byte)fontFile.Textures.Count;
+        fontFile.Textures.Add(fontImage);
+        fontFile.PageCount = (byte)fontFile.Textures.Count;
 
         return fontFile;
-    }
-
-    private static Graphics CreateGraphics(Bitmap bmp)
-    {
-        var g = Graphics.FromImage(bmp);
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-        return g;
     }
 }

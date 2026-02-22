@@ -1,12 +1,14 @@
 using Microsoft.Xna.Framework;
 
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable FieldCanBeMadeReadOnly.Global
 namespace TRPEFontGen;
 
-public class FontChar
+public class FontChar(char c, Rectangle glyph, Rectangle cropping, Vector3 kerning, byte page)
 {
-    public Rectangle Glyph { get; set; }
-    public Rectangle Cropping { get; set; }
-    public char Char { get; set; }
-    public Vector3 Kerning { get; set; }
-    public byte Page { get; set; }
+    public Rectangle Glyph = glyph;
+    public Rectangle Cropping = cropping;
+    public char Char = c;
+    public Vector3 Kerning = kerning;
+    public byte Page = page;
 }

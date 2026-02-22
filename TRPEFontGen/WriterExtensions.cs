@@ -1,11 +1,10 @@
 using System.Drawing;
-using System.IO;
 using Microsoft.Xna.Framework;
 using Rectangle = Microsoft.Xna.Framework.Rectangle;
 
 namespace TRPEFontGen;
 
-public static class Extensions
+public static class WriterExtensions
 {
     extension(BinaryWriter bw)
     {
