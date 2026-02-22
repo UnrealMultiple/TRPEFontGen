@@ -1,0 +1,59 @@
+name: .NET Build and Release
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build FontGeneratorCLI/FontGeneratorCLI.csproj -c Release -r win-x64 --self-contained true -o ./publish
+
+    - name: Generate Tag Name
+      id: tag_name
+      run: |
+        DATE=$(date +'%Y.%m.%d')
+        COUNT=$(git tag -l "v$DATE*" | wc -l)
+        if [ $COUNT -eq 0 ]; then
+          TAG="v$DATE"
+        else
+          TAG="v$DATE.$COUNT"
+        fi
+        echo "TAG_NAME=$TAG" >> $GITHUB_ENV
+        echo "final_tag=$TAG" >> $GITHUB_OUTPUT
+
+    - name: Zip Artifact
+      run: zip -r FontGeneratorCLI_win-x64.zip ./publish/*
+
+    - name: Create Tag
+      run: |
+        git tag ${{ env.TAG_NAME }}
+        git push origin ${{ env.TAG_NAME }}
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ env.TAG_NAME }}
+        name: FontGeneratorCLI ${{ env.TAG_NAME }}
+        generate_release_notes: true # 自动获取 commit history 作为内容
+        files: |
+          FontGeneratorCLI_win-x64.zip
