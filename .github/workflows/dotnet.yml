@@ -27,7 +27,7 @@ jobs:
       run: dotnet restore
       
     - name: Build
-      run: dotnet build FontGeneratorCLI/FontGeneratorCLI.csproj -c Release -r win-x64 --self-contained true -o ./publish
+      run: dotnet build FontGeneratorCLI/FontGeneratorCLI.csproj -c Release -r win-x64 -o ./publish
 
     - name: Generate Tag Name
       id: tag_name
@@ -43,7 +43,7 @@ jobs:
         echo "final_tag=$TAG" >> $GITHUB_OUTPUT
 
     - name: Zip Artifact
-      run: zip -r FontGeneratorCLI_win-x64.zip ./publish/*
+      run: zip -j FontGeneratorCLI_win-x64.zip ./publish/*
 
     - name: Create Tag
       run: |
