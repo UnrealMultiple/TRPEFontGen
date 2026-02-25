@@ -1,4 +1,7 @@
-﻿namespace FontGeneratorCLI;
+﻿using System.Text;
+using Spectre.Console;
+
+namespace FontGeneratorCLI;
 
 public static class CharSet
 {
@@ -29,7 +32,26 @@ public static class CharSet
 
     public static void AddString(HashSet<char> chars, string text)
     {
-        foreach (var c in text.Where(c => !char.IsControl(c)))
+        var sb = new StringBuilder();
+
+        var count = 0;
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (!char.IsHighSurrogate(text[i])) continue;
+            
+            var surrogatePair = text[i] + text[i + 1].ToString();
+            sb.Append($"{surrogatePair}");
+            i++;
+            count++;
+        }
+
+        if (count != 0)
+        {
+            AnsiConsole.MarkupLine($"[yellow]跳过了[red]{count}[/]个不受支持的字符, 详细见[red]skip.txt[/][/]");
+            File.WriteAllText("skip.txt", sb.ToString(), Encoding.UTF8);
+        }
+        
+        foreach (var c in text.Where(c => !char.IsControl(c) && !char.IsHighSurrogate(c) && !char.IsLowSurrogate(c)))
         {
             chars.Add(c);
         }

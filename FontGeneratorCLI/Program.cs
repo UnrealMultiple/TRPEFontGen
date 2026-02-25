@@ -92,7 +92,7 @@ internal static class Program
                     {
                         var text = File.ReadAllText(txtPath);
                         var countBefore = chars.Count;
-                        foreach (var c in text.Where(c => !char.IsControl(c))) chars.Add(c);
+                        CharSet.AddString(chars, text);
                 
                         AnsiConsole.MarkupLine($"[green]成功导入![/] 新增了 [yellow]{chars.Count - countBefore}[/] 个字符。");
                     }
