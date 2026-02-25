@@ -13,48 +13,61 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        submodules: recursive
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 10.0.x
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
 
-    - name: Restore dependencies
-      run: dotnet restore
-      
-    - name: Build
-      run: dotnet build FontGeneratorCLI/FontGeneratorCLI.csproj -c Release -r win-x64 -o ./publish
+      - name: Restore dependencies
+        run: dotnet restore
 
-    - name: Generate Tag Name
-      id: tag_name
-      run: |
-        DATE=$(date +'%Y.%m.%d')
-        COUNT=$(git tag -l "v$DATE*" | wc -l)
-        if [ $COUNT -eq 0 ]; then
-          TAG="v$DATE"
-        else
-          TAG="v$DATE.$COUNT"
-        fi
-        echo "TAG_NAME=$TAG" >> $GITHUB_ENV
-        echo "final_tag=$TAG" >> $GITHUB_OUTPUT
 
-    - name: Zip Artifact
-      run: zip -j FontGeneratorCLI_win-x64.zip ./publish/*
+          - name: Build Windows x64
+            run: dotnet publish FontGeneratorCLI/FontGeneratorCLI.csproj -c Release -r win-x64 -o ./publish/win-x64 --self-contained true
 
-    - name: Create Tag
-      run: |
-        git tag ${{ env.TAG_NAME }}
-        git push origin ${{ env.TAG_NAME }}
+          - name: Build Linux x64
+            run: dotnet publish FontGeneratorCLI/FontGeneratorCLI.csproj -c Release -r linux-x64 -o ./publish/linux-x64 --self-contained true
 
-    - name: Create Release
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: ${{ env.TAG_NAME }}
-        name: FontGeneratorCLI ${{ env.TAG_NAME }}
-        generate_release_notes: true
-        files: |
-          FontGeneratorCLI_win-x64.zip
+          - name: Build Linux ARM64
+            run: dotnet publish FontGeneratorCLI/FontGeneratorCLI.csproj -c Release -r linux-arm64 -o ./publish/linux-arm64 --self-contained true
+          
+          # --- 标签生成 ---
+          - name: Generate Tag Name
+            id: tag_name
+            run: |
+              DATE=$(date +'%Y.%m.%d')
+              COUNT=$(git tag -l "v$DATE*" | wc -l)
+              if [ $COUNT -eq 0 ]; then
+                TAG="v$DATE"
+              else
+                TAG="v$DATE.$COUNT"
+              fi
+              echo "TAG_NAME=$TAG" >> $GITHUB_ENV
+              echo "final_tag=$TAG" >> $GITHUB_OUTPUT
+
+          - name: Zip Artifacts
+            run: |
+              zip -j FontGeneratorCLI_win-x64.zip ./publish/win-x64/*
+              zip -j FontGeneratorCLI_linux-x64.zip ./publish/linux-x64/*
+              zip -j FontGeneratorCLI_linux-arm64.zip ./publish/linux-arm64/*
+
+          - name: Create Tag
+            run: |
+              git tag ${{ env.TAG_NAME }}
+              git push origin ${{ env.TAG_NAME }}
+
+          - name: Create Release
+            uses: softprops/action-gh-release@v2
+            with:
+              tag_name: ${{ env.TAG_NAME }}
+              name: FontGeneratorCLI ${{ env.TAG_NAME }}
+              generate_release_notes: true
+              files: |
+                FontGeneratorCLI_win-x64.zip
+                FontGeneratorCLI_linux-x64.zip
+                FontGeneratorCLI_linux-arm64.zip
