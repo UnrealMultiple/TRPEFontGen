@@ -13,7 +13,8 @@ namespace TRPEFontGen;
 public static class Generator
 {
     public static FontFile Generate(Font font, char[] chars, string name, int minusKerning = 5,
-        int compressSize = 2, int lineSpacing = 24, float spacing = 0, char defaultChar = '*')
+        int compressSize = 2, int lineSpacing = 24, float spacing = 0, char defaultChar = '*', 
+        float latinMargin = 0.5f)
     {
         const int size = 1024;
         const int atlasPadding = 2;
@@ -32,7 +33,6 @@ public static class Generator
         float yNow = 1;
         float yMax = 0;
         byte pages = 0;
-
 
         foreach (var c in chars)
         {
@@ -77,15 +77,21 @@ public static class Generator
                 c.ToString(),
                 Color.White
             ));
+            
+            var isLatin = c is >= 'a' and <= 'z' or >= 'A' and <= 'Z';
+            
+            var currentLeftMargin = isLatin ? latinMargin : 0f;
+            var currentRightMargin = isLatin ? latinMargin : 0f;
 
             var fontChar = new FontChar
             (
                 c,
                 new Rectangle(0, 0, (int)drawWidth, (int)drawHeight + 2),
                 new Rectangle((int)xNow, (int)yNow, (int)drawWidth, (int)drawHeight),
-                new Vector3(0, drawWidth - minusKerning, 0),
+                new Vector3(currentLeftMargin, drawWidth - minusKerning, currentRightMargin),
                 pages
             );
+            
             fontFile.Chars.Add(fontChar);
             xNow += actualWidth + atlasPadding;
         }
