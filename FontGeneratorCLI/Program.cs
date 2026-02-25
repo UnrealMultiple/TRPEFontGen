@@ -69,47 +69,74 @@ internal static class Program
             new MultiSelectionPrompt<string>()
                 .Title("[yellow]请选择要包含的字符集 (空格选中/取消):[/]")
                 .Required()
-                .AddChoices("基础 ASCII (0x0020-0x007E)", "常用中文字符 (0x4E00-0x9FA5)", "全角符号 (0xFF01-0xFF5E)", "从外部 TXT 读取", "自定义 Hex 范围"));
+                .AddChoices("基础 ASCII (0x0020-0x007E)", "常用中文字符 (0x4E00-0x9FA5)", "全角符号 (0xFF01-0xFF5E)", "中文常用3500字", "从外部 TXT 读取", "自定义 Hex 范围"));
 
         var chars = new HashSet<char>();
 
-        if (charOptions.Contains("基础 ASCII (0x0020-0x007E)")) AddRange(chars, 0x0020, 0x007E);
-        if (charOptions.Contains("常用中文字符 (0x4E00-0x9FA5)")) AddRange(chars, 0x4E00, 0x9FA5);
-        if (charOptions.Contains("全角符号 (0xFF01-0xFF5E)")) AddRange(chars, 0xFF01, 0xFF5E);
+        if (charOptions.Contains("基础 ASCII (0x0020-0x007E)")) CharSet.AddRange(chars, CharSet.BasicASCIIRange);
+        if (charOptions.Contains("常用中文字符 (0x4E00-0x9FA5)")) CharSet.AddRange(chars, CharSet.CJKUnifiedRange);
+        if (charOptions.Contains("全角符号 (0xFF01-0xFF5E)")) CharSet.AddRange(chars, CharSet.FullWidthRange);
+        if (charOptions.Contains("中文常用3500字")) CharSet.AddString(chars, CharSet.CommonUseChinese);
 
         if (charOptions.Contains("从外部 TXT 读取"))
         {
-            var txtPath = AnsiConsole.Ask<string>("请输入 [blue]TXT 文件路径[/]:");
-            try
+            while (true)
             {
-                if (File.Exists(txtPath))
+                var txtPath = AnsiConsole.Ask<string>("请输入 [blue]TXT 文件路径[/] (输入 [yellow]q[/] 结束读取):", "q");
+        
+                if (txtPath.Trim().Equals("q", StringComparison.CurrentCultureIgnoreCase)) break;
+
+                try
                 {
-                    var text = File.ReadAllText(txtPath);
-                    foreach (var c in text.Where(c => !char.IsControl(c))) chars.Add(c);
+                    if (File.Exists(txtPath))
+                    {
+                        var text = File.ReadAllText(txtPath);
+                        var countBefore = chars.Count;
+                        foreach (var c in text.Where(c => !char.IsControl(c))) chars.Add(c);
+                
+                        AnsiConsole.MarkupLine($"[green]成功导入![/] 新增了 [yellow]{chars.Count - countBefore}[/] 个字符。");
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine($"[red]错误: 文件不存在 -> {txtPath}[/]");
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    AnsiConsole.MarkupLine("[red]警告: TXT 文件不存在，已跳过。[/]");
+                    AnsiConsole.MarkupLine($"[red]读取失败: {ex.Message}[/]");
                 }
-            }
-            catch (Exception ex)
-            {
-                AnsiConsole.MarkupLine($"[red]读取 TXT 失败: {ex.Message}[/]");
             }
         }
-
+        
         if (charOptions.Contains("自定义 Hex 范围"))
         {
-            var rangeStr = AnsiConsole.Ask<string>("请输入范围 (格式如 0x4E00-0x4E10):");
-            try
+            while (true)
             {
-                var parts = rangeStr.Split('-');
-                if (parts.Length == 2)
-                    AddRange(chars, Convert.ToInt32(parts[0].Trim(), 16), Convert.ToInt32(parts[1].Trim(), 16));
-            }
-            catch
-            {
-                AnsiConsole.MarkupLine("[red]Hex 格式输入错误，示例: 0x0021-0x007E[/]");
+                var rangeStr = AnsiConsole.Ask<string>("请输入 Hex 范围 (如 0x4E00-0x4E10, 输入 [yellow]q[/] 结束):", "q");
+        
+                if (rangeStr.Trim().Equals("q", StringComparison.CurrentCultureIgnoreCase)) break;
+
+                try
+                {
+                    var parts = rangeStr.Split('-');
+                    if (parts.Length == 2)
+                    {
+                        var start = Convert.ToInt32(parts[0].Trim(), 16);
+                        var end = Convert.ToInt32(parts[1].Trim(), 16);
+                
+                        var countBefore = chars.Count;
+                        CharSet.AddRange(chars, start, end);
+                        AnsiConsole.MarkupLine($"[green]已添加范围![/] 该区间内新增了 [yellow]{chars.Count - countBefore}[/] 个唯一字符。");
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine("[red]格式错误。正确格式示例: 0x0021-0x007E[/]");
+                    }
+                }
+                catch
+                {
+                    AnsiConsole.MarkupLine("[red]解析失败，请确保输入的是有效的 16 进制数。[/]");
+                }
             }
         }
 
@@ -119,7 +146,17 @@ internal static class Program
             return;
         }
         
+        
         var outputName = AnsiConsole.Ask<string>("请输入[green]输出文件夹/字体名[/]:", "Death_Text");
+        
+        AnsiConsole.Write(new Rule("[yellow]排版参数微调[/]").RuleStyle("grey").LeftJustified());
+        
+        var spacing = AnsiConsole.Ask("请输入[green]字符额外间距 (spacing)[/]:", 0f);
+        var minusKerning = AnsiConsole.Ask("请输入[green]负字间距 (minusKerning)[/]:", 5);
+        var lineSpacing = AnsiConsole.Ask("请输入[green]行间距 (lineSpacing)[/]:", 24);
+        var latinMargin = AnsiConsole.Ask("请输入[green]拉丁字母补偿 (latinMargin)[/]:", 0.5f);
+        var defaultCharInput = AnsiConsole.Ask<string>("请输入[green]默认缺省字符 (defaultChar)[/]:", "*");
+        var defaultChar = string.IsNullOrEmpty(defaultCharInput) ? '*' : defaultCharInput[0];
 
         AnsiConsole.WriteLine();
         var sw = Stopwatch.StartNew();
@@ -130,10 +167,18 @@ internal static class Program
                 .Spinner(Spinner.Known.Dots)
                 .Start("[bold yellow]正在生成贴图中...[/]", _ =>
                 {
-                    var fontFile = Generator.Generate(font, chars.ToArray(), outputName);
+                    var fontFile = Generator.Generate(
+                        font, 
+                        chars.ToArray(), 
+                        outputName,
+                        spacing: spacing,
+                        minusKerning: minusKerning,
+                        lineSpacing: lineSpacing,
+                        latinMargin: latinMargin,
+                        defaultChar: defaultChar
+                    );
                     var savePath = Path.Combine("font", outputName);
-
-                    // 确保目录存在
+                    
                     if (!Directory.Exists(savePath)) Directory.CreateDirectory(savePath);
 
                     fontFile.SaveMetaData(savePath);
@@ -157,13 +202,5 @@ internal static class Program
             AnsiConsole.MarkupLine("[red]生成过程中出现错误，可能是由于 IO 权限或内存不足。[/]");
             AnsiConsole.WriteException(ex);
         }
-    }
-
-    private static void AddRange(HashSet<char> chars, int start, int end)
-    {
-        var actualStart = Math.Max(0, start);
-        var actualEnd = Math.Min(char.MaxValue, end);
-        
-        for (var i = actualStart; i <= actualEnd; i++) chars.Add((char)i);
     }
 }
