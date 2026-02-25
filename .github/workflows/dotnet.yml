@@ -28,13 +28,13 @@ jobs:
 
 
       - name: Build Windows x64
-        run: dotnet publish FontGeneratorCLI/FontGeneratorCLI.csproj -c Release -r win-x64 -o ./publish/win-x64 --self-contained true
+        run: dotnet publish FontGeneratorCLI/FontGeneratorCLI.csproj -c Release -r win-x64 -o ./publish/win-x64
 
       - name: Build Linux x64
-        run: dotnet publish FontGeneratorCLI/FontGeneratorCLI.csproj -c Release -r linux-x64 -o ./publish/linux-x64 --self-contained true
+        run: dotnet publish FontGeneratorCLI/FontGeneratorCLI.csproj -c Release -r linux-x64 -o ./publish/linux-x64
 
       - name: Build Linux ARM64
-        run: dotnet publish FontGeneratorCLI/FontGeneratorCLI.csproj -c Release -r linux-arm64 -o ./publish/linux-arm64 --self-contained true
+        run: dotnet publish FontGeneratorCLI/FontGeneratorCLI.csproj -c Release -r linux-arm64 -o ./publish/linux-arm64
 
       - name: Generate Tag Name
         id: tag_name
