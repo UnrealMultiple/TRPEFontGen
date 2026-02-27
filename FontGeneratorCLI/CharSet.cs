@@ -16,44 +16,61 @@ public static class CharSet
 
     public static void AddRange(HashSet<char> chars, int start, int end)
     {
-        var actualStart = Math.Max(0, start);
-        var actualEnd = Math.Min(char.MaxValue, end);
-
-        for (var i = actualStart; i <= actualEnd; i++) chars.Add((char)i);
+        AddRange(chars, (start, end));
     }
 
     public static void AddRange(HashSet<char> chars, (int Min, int Max) range)
     {
+        var skippedSb = new StringBuilder();
+        var skippedCount = 0;
+
         var actualStart = Math.Max(0, range.Min);
         var actualEnd = Math.Min(char.MaxValue, range.Max);
 
-        for (var i = actualStart; i <= actualEnd; i++) chars.Add((char)i);
+        for (var i = actualStart; i <= actualEnd; i++)
+        {
+            var c = (char)i;
+            
+            if (!char.IsSurrogate(c))
+            {
+                chars.Add(c);
+            }
+            else
+            {
+                skippedSb.Append(c);
+                skippedCount++;
+            }
+        }
+
+        if (skippedCount <= 0) return;
+        
+        AnsiConsole.MarkupLine($"[yellow]跳过了[red] {skippedCount} [/]个不受支持的字符, 详细见[red] skip.txt [/][/]");
+        File.WriteAllText("skip.txt", skippedSb.ToString(), Encoding.UTF8);
     }
 
     public static void AddString(HashSet<char> chars, string text)
     {
-        var sb = new StringBuilder();
-
+        var skipSb = new StringBuilder();
         var count = 0;
+
         for (var i = 0; i < text.Length; i++)
         {
-            if (!char.IsHighSurrogate(text[i])) continue;
+            var codePoint = char.IsHighSurrogate(text[i]) && i + 1 < text.Length
+                ? char.ConvertToUtf32(text[i], text[++i]) 
+                : text[i];
             
-            var surrogatePair = text[i] + text[i + 1].ToString();
-            sb.Append($"{surrogatePair}");
-            i++;
+            if (char.IsControl((char)codePoint) && codePoint <= char.MaxValue) continue;
+            
+            chars.Add(text[i]);
+
+            if (codePoint <= char.MaxValue) continue;
+            skipSb.Append(char.ConvertFromUtf32(codePoint));
             count++;
         }
 
-        if (count != 0)
-        {
-            AnsiConsole.MarkupLine($"[yellow]跳过了[red] {count} [/]个不受支持的字符, 详细见[red] skip.txt [/][/]");
-            File.WriteAllText("skip.txt", sb.ToString(), Encoding.UTF8);
-        }
+        if (count == 0) return;
         
-        foreach (var c in text.Where(c => !char.IsControl(c) && !char.IsHighSurrogate(c) && !char.IsLowSurrogate(c)))
-        {
-            chars.Add(c);
-        }
+        AnsiConsole.MarkupLine($"[yellow]跳过了[red] {count} [/]个不受支持的字符, 详细见[red] skip.txt [/][/]");
+        File.WriteAllText("skip.txt", skipSb.ToString(), Encoding.UTF8);
     }
 }

@@ -1,6 +1,7 @@
 using SixLabors.ImageSharp;
 using Microsoft.Xna.Framework;
 using SixLabors.Fonts;
+using SixLabors.Fonts.Unicode;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -36,64 +37,80 @@ public static class Generator
 
         foreach (var c in chars)
         {
-            var charSize = TextMeasurer.MeasureSize(c.ToString(), textOption);
-
-            var actualWidth = (float)Math.Ceiling(charSize.Width);
-            var actualHeight = (float)Math.Ceiling(charSize.Height);
-
-            var drawWidth = actualWidth - compressSize;
-            var drawHeight = actualHeight - compressSize;
-
-            if (xNow + actualWidth + atlasPadding > size)
+            var isSupported = font.TryGetGlyphs(new CodePoint(c), out _);
+            if (!isSupported)
             {
-                yNow += yMax + atlasPadding;
-                xNow = 1;
-                yMax = 0;
+                Console.WriteLine($"字体不支持字符: {c}");
+                fontFile.CharCount--;
+                continue;
             }
 
-            if (yNow + actualHeight + atlasPadding > size)
+            try
             {
-                fontFile.Textures.Add(fontImage);
+                var charSize = TextMeasurer.MeasureSize(c.ToString(), textOption);
 
-                fontImage = new Image<Rgba32>(size, size);
-                xNow = 1;
-                yNow = 1;
-                yMax = 0;
-                pages++;
+                var actualWidth = (float)Math.Ceiling(charSize.Width);
+                var actualHeight = (float)Math.Ceiling(charSize.Height);
+
+                var drawWidth = actualWidth - compressSize;
+                var drawHeight = actualHeight - compressSize;
+
+                if (xNow + actualWidth + atlasPadding > size)
+                {
+                    yNow += yMax + atlasPadding;
+                    xNow = 1;
+                    yMax = 0;
+                }
+
+                if (yNow + actualHeight + atlasPadding > size)
+                {
+                    fontFile.Textures.Add(fontImage);
+
+                    fontImage = new Image<Rgba32>(size, size);
+                    xNow = 1;
+                    yNow = 1;
+                    yMax = 0;
+                    pages++;
+                }
+
+                if (actualHeight > yMax)
+                    yMax = actualHeight;
+
+                var textOptions = new RichTextOptions(font)
+                {
+                    Origin = new PointF(xNow, yNow),
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Top
+                };
+
+                fontImage.Mutate(ctx => ctx.DrawText(
+                    textOptions,
+                    c.ToString(),
+                    Color.White
+                ));
+            
+                var isLatin = c is >= 'a' and <= 'z' or >= 'A' and <= 'Z';
+            
+                var currentLeftMargin = isLatin ? latinMargin : 0f;
+                var currentRightMargin = isLatin ? latinMargin : 0f;
+
+                var fontChar = new FontChar
+                (
+                    c,
+                    new Rectangle(0, 0, (int)drawWidth, (int)drawHeight + 2),
+                    new Rectangle((int)xNow, (int)yNow, (int)drawWidth, (int)drawHeight),
+                    new Vector3(currentLeftMargin, drawWidth - minusKerning, currentRightMargin),
+                    pages
+                );
+            
+                fontFile.Chars.Add(fontChar);
+                xNow += actualWidth + atlasPadding;
             }
-
-            if (actualHeight > yMax)
-                yMax = actualHeight;
-
-            var textOptions = new RichTextOptions(font)
+            catch (Exception ex)
             {
-                Origin = new PointF(xNow, yNow),
-                HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Top
-            };
-
-            fontImage.Mutate(ctx => ctx.DrawText(
-                textOptions,
-                c.ToString(),
-                Color.White
-            ));
-            
-            var isLatin = c is >= 'a' and <= 'z' or >= 'A' and <= 'Z';
-            
-            var currentLeftMargin = isLatin ? latinMargin : 0f;
-            var currentRightMargin = isLatin ? latinMargin : 0f;
-
-            var fontChar = new FontChar
-            (
-                c,
-                new Rectangle(0, 0, (int)drawWidth, (int)drawHeight + 2),
-                new Rectangle((int)xNow, (int)yNow, (int)drawWidth, (int)drawHeight),
-                new Vector3(currentLeftMargin, drawWidth - minusKerning, currentRightMargin),
-                pages
-            );
-            
-            fontFile.Chars.Add(fontChar);
-            xNow += actualWidth + atlasPadding;
+                Console.WriteLine($"处理字符({c})时发生错误: {ex}");
+                fontFile.CharCount--;
+            }
         }
 
         fontFile.Textures.Add(fontImage);
