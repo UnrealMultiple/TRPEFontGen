@@ -1,6 +1,6 @@
 ﻿# TRPEFontGen
 
-[English](./README_EN.md)
+<p align="center">中文 | <a href="./README_EN.md">English</a></p>
 
 用于生成Terraria 1.4 (PE)字体的库
 
