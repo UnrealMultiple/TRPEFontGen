@@ -24,6 +24,19 @@ public static class WriterExtensions
         }
     }
 
+    extension(BinaryReader br)
+    {
+        public Rectangle ReadRectangle()
+        {
+            return new Rectangle(br.ReadInt32(), br.ReadInt32(), br.ReadInt32(), br.ReadInt32());
+        }
+
+        public Vector3 ReadVector3()
+        {
+            return new Vector3(br.ReadSingle(), br.ReadSingle(), br.ReadSingle());
+        }
+    }
+
     public static Rectangle Convert(this RectangleF rect)
     {
         return new Rectangle((int)rect.X, (int)rect.Y, (int)rect.Width, (int)rect.Height);

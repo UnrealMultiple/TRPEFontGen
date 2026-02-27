@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using SixLabors.Fonts;
 using Spectre.Console;
 using TRPEFontGen;
@@ -69,7 +69,7 @@ internal static class Program
             new MultiSelectionPrompt<string>()
                 .Title("[yellow]请选择要包含的字符集 (空格选中/取消):[/]")
                 .Required()
-                .AddChoices("基础 ASCII (0x0020-0x007E)", "常用中文字符 (0x4E00-0x9FA5)", "全角符号 (0xFF01-0xFF5E)", "中文常用3500字", "从外部 TXT 读取", "自定义 Hex 范围"));
+                .AddChoices("基础 ASCII (0x0020-0x007E)", "常用中文字符 (0x4E00-0x9FA5)", "全角符号 (0xFF01-0xFF5E)", "中文常用3500字", "常用1000字", "从外部 TXT 读取", "从字体导出 TXT 读取", "自定义 Hex 范围", "仅导出字符集到 TXT"));
 
         var chars = new HashSet<char>();
 
@@ -77,6 +77,7 @@ internal static class Program
         if (charOptions.Contains("常用中文字符 (0x4E00-0x9FA5)")) CharSet.AddRange(chars, CharSet.CJKUnifiedRange);
         if (charOptions.Contains("全角符号 (0xFF01-0xFF5E)")) CharSet.AddRange(chars, CharSet.FullWidthRange);
         if (charOptions.Contains("中文常用3500字")) CharSet.AddString(chars, CharSet.CommonUseChinese);
+        if (charOptions.Contains("常用1000字")) CharSet.AddString(chars, CharSet.CommonUse1000);
 
         if (charOptions.Contains("从外部 TXT 读取"))
         {
@@ -107,7 +108,43 @@ internal static class Program
                 }
             }
         }
+
+        if (charOptions.Contains("从字体导出 TXT 读取"))
+        {
+            while (true)
+            {
+                var fontTxtPath = AnsiConsole.Ask<string>("请输入 [blue]字体导出 TXT 文件路径[/] (输入 [yellow]q[/] 结束读取):", "q");
         
+                if (fontTxtPath.Trim().Equals("q", StringComparison.CurrentCultureIgnoreCase)) break;
+
+                try
+                {
+                    if (File.Exists(fontTxtPath))
+                    {
+                        var readChars = TRPEFontGen.FontFile.ReadCharsFromMetaData(fontTxtPath);
+                        if (readChars != null && readChars.Length > 0)
+                        {
+                            var countBefore = chars.Count;
+                            CharSet.AddString(chars, new string(readChars));
+                            AnsiConsole.MarkupLine($"[green]成功导入![/] 从字体元数据中读取了 [yellow]{chars.Count - countBefore}[/] 个字符。");
+                        }
+                        else
+                        {
+                            AnsiConsole.MarkupLine("[red]错误: 无法读取字体元数据文件或文件格式不正确。[/]");
+                        }
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine($"[red]错误: 文件不存在 -> {fontTxtPath}[/]");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine($"[red]读取失败: {ex.Message}[/]");
+                }
+            }
+        }
+
         if (charOptions.Contains("自定义 Hex 范围"))
         {
             while (true)
@@ -138,6 +175,24 @@ internal static class Program
                     AnsiConsole.MarkupLine("[red]解析失败，请确保输入的是有效的 16 进制数。[/]");
                 }
             }
+        }
+
+        if (charOptions.Contains("仅导出字符集到 TXT"))
+        {
+            if (chars.Count == 0)
+            {
+                AnsiConsole.MarkupLine("[red]错误: 未选择或未识别到任何字符，程序退出。[/]");
+                return;
+            }
+            var exportPath = AnsiConsole.Ask<string>("请输入 [blue]导出 TXT 文件路径[/]:", "chars_export.txt");
+            var sb = new System.Text.StringBuilder();
+            foreach (var c in chars)
+            {
+                sb.Append(c);
+            }
+            File.WriteAllText(exportPath, sb.ToString());
+            AnsiConsole.MarkupLine($"[green]已导出 [yellow]{chars.Count}[/] 个字符到: {exportPath}[/]");
+            return;
         }
 
         if (chars.Count == 0)
