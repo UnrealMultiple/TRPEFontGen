@@ -1,6 +1,6 @@
 # TRPEFontGen
 
-<p align="center"><a href="./README.md">中文</a> | English</p>
+[中文](./README.md) | English
 
 A library for generating Terraria 1.4 (PE) fonts.
 
