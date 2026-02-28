@@ -152,7 +152,7 @@ internal static class Program
         AnsiConsole.Write(new Rule("[yellow]排版参数微调[/]").RuleStyle("grey").LeftJustified());
         
         var spacing = AnsiConsole.Ask("请输入[green]字符额外间距 (spacing)[/]:", 0f);
-        var minusKerning = AnsiConsole.Ask("请输入[green]负字间距 (minusKerning)[/]:", 5);
+        var minusKerning = AnsiConsole.Ask("请输入[green]负字间距 (minusKerning)[/]:", 0);
         var lineSpacing = AnsiConsole.Ask("请输入[green]行间距 (lineSpacing)[/]:", 24);
         var latinMargin = AnsiConsole.Ask("请输入[green]拉丁字母补偿 (latinMargin)[/]:", 0.5f);
         var defaultCharInput = AnsiConsole.Ask<string>("请输入[green]默认缺省字符 (defaultChar)[/]:", "*");

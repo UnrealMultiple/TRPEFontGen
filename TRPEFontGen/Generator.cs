@@ -13,7 +13,7 @@ namespace TRPEFontGen;
 
 public static class Generator
 {
-    public static FontFile Generate(Font font, char[] chars, string name, int minusKerning = 5,
+    public static FontFile Generate(Font font, char[] chars, string name, int minusKerning = 0,
         int compressSize = 2, int lineSpacing = 24, float spacing = 0, char defaultChar = '*', 
         float latinMargin = 0.5f)
     {
