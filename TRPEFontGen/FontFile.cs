@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
@@ -66,5 +67,50 @@ public class FontFile(int charCount, string name, int lineSpacing, float spacing
         Directory.CreateDirectory(path);
         using var fs = new FileStream(Path.Combine(path, $"{Name}.txt"), FileMode.Create);
         WriteMetaData(fs);
+    }
+
+    public static FontFile? ReadMetaData(string filePath)
+    {
+        using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+        using var br = new BinaryReader(fs, Encoding.Unicode);
+
+        try
+        {
+            var pageCount = br.ReadByte();
+            var charCount = br.ReadInt32();
+
+            var chars = new List<FontChar>();
+            for (var i = 0; i < charCount; i++)
+            {
+                var glyph = br.ReadRectangle();
+                var cropping = br.ReadRectangle();
+                var c = br.ReadChar();
+                var kerning = br.ReadVector3();
+                var page = br.ReadByte();
+
+                chars.Add(new FontChar(c, glyph, cropping, kerning, page));
+            }
+
+            var lineSpacing = br.ReadInt32();
+            var spacing = br.ReadSingle();
+            var hasDefaultChar = br.ReadBoolean();
+            var defaultChar = hasDefaultChar ? br.ReadChar() : '*';
+
+            return new FontFile(charCount, Path.GetFileNameWithoutExtension(filePath), lineSpacing, spacing, hasDefaultChar, defaultChar)
+            {
+                PageCount = pageCount,
+                Chars = chars
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public static char[]? ReadCharsFromMetaData(string filePath)
+    {
+        var fontFile = ReadMetaData(filePath);
+        return fontFile?.Chars.Select(c => c.Char).ToArray();
     }
 }
